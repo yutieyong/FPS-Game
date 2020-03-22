@@ -22,7 +22,9 @@ public class zombie : MonoBehaviour
 
     // timer
     float timer = 1.0f;
-    int health = 15;
+    public int health = 15;
+
+    bool can_attack = true;
 
 
 
@@ -52,7 +54,7 @@ public class zombie : MonoBehaviour
         AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
         // transfer among different states
         // if we are in idle state
-        if (state.nameHash == Animator.StringToHash("Base Layer.idle") && !animator.IsInTransition(0)) {
+        if (state.fullPathHash == Animator.StringToHash("Base Layer.idle") && !animator.IsInTransition(0)) {
             
             // this means we are inside which state ? idle
             // we can transfer from idle state to other state
@@ -63,6 +65,7 @@ public class zombie : MonoBehaviour
                 return;
             }
             if (Vector3.Distance(enemy_transform.transform.position, player.transform.position) <= 1.2f) {
+                can_attack = true;
                 animator.SetBool("attack", true);
             } else {
                 // if distance is not close enough, we run
@@ -81,7 +84,7 @@ public class zombie : MonoBehaviour
         // agent.isStopped = false; // you visit this memory block 120 times per seconds
 
         // if we are in run state
-        if (state.nameHash == Animator.StringToHash("Base Layer.run") && !animator.IsInTransition(0)) {
+        if (state.fullPathHash == Animator.StringToHash("Base Layer.run") && !animator.IsInTransition(0)) {
             animator.SetBool("run", false);
             // count down timer
             timer -= Time.deltaTime;
@@ -95,13 +98,14 @@ public class zombie : MonoBehaviour
             // if distance is close enough
             if (Vector3.Distance(enemy_transform.position, player.transform.position) <= 1.2f) {
                 agent.isStopped = true;
+                can_attack = true;
                 // enter attack state
-                animator.SetBool("attack", true);
+                animator.SetBool("attack", true); // try enter attack state
             }
         }
 
         // if current state is attack
-        if (state.nameHash == Animator.StringToHash("Base Layer.attack") && !animator.IsInTransition(0)) {
+        if (state.fullPathHash == Animator.StringToHash("Base Layer.attack") && !animator.IsInTransition(0)) {
             // we are in attack state, when we attack, we need to face the player
             RotateToPlayer();
             animator.SetBool("attack", false);
@@ -112,11 +116,24 @@ public class zombie : MonoBehaviour
             if (state.normalizedTime >= 1.0f) {
                 animator.SetBool("idle", true);
                 // reset timer to be 2
-                timer = 1.0f;
+                timer = 2.0f;
+                // Player take damage
+                // TODO: Miss rate (eat buff, 闪避护符)
+                if (can_attack) {
+                    player.OnDamage(1);
+                    can_attack = false;
+                }
             } // normalized time can take value from 0 -> 1, 1 means animation 100% complete
-
         }
 
+        if (state.fullPathHash == Animator.StringToHash("Base Layer.death") && !animator.IsInTransition(0)) {
+            // AnimationStateInfo.normalizedTime
+            if (state.normalizedTime >= 1.0) {
+                GameManager.Instance.SetScore(100);
+                // Destroy this zombie object
+                Destroy(this.gameObject);
+            }
+        }
         
 
         // set the destination to be player's position
@@ -133,7 +150,13 @@ public class zombie : MonoBehaviour
         enemy_transform.rotation = Quaternion.LookRotation(zombie_delta_dir);
     }
 
+
+    // Enemy takes damage from player.
+    // When health <= 0, die
     public void OnDamage(int damage) {
         this.health -= damage;
+        if (health <= 0) {
+            animator.SetBool("death", true);
+        }
     }
 }

@@ -32,9 +32,9 @@ public class player : MonoBehaviour // Game Object
     Transform muzzle_transform;
 
     // 子弹与物体的碰撞层
-    public LayerMask layer;
+    public LayerMask layer; // null
     // particle effect (bullet hit effect 粒子效果)
-    public Transform particle_effect;
+    public Transform particle_effect; 
 
     // fire sounds
     public AudioClip audio_clip; // null
@@ -90,6 +90,10 @@ public class player : MonoBehaviour // Game Object
             RaycastHit hit;
             bool hitOrNot = Physics.Raycast(muzzle_transform.position, camera_transform.TransformDirection(Vector3.forward), out hit, 100, layer);
             if (hitOrNot) {
+                if (hit.collider.tag.Equals("enemy")) {
+                    zombie zombie = hit.collider.GetComponentInParent<zombie>();
+                    zombie.OnDamage(1);
+                }
                 Instantiate(particle_effect, hit.point, hit.transform.rotation);
             }
         }
